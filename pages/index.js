@@ -1,15 +1,18 @@
 import {useState, useEffect} from "react";
 import {ethers} from "ethers";
-import atm_abi from "../artifacts/contracts/Assessment.sol/Assessment.json";
+import abi from "./contracts/abi.json";
 
 export default function HomePage() {
   const [ethWallet, setEthWallet] = useState(undefined);
   const [account, setAccount] = useState(undefined);
-  const [atm, setATM] = useState(undefined);
-  const [balance, setBalance] = useState(undefined);
+  const [contract, setContract] = useState(undefined);
+  const [score, setScore] = useState(undefined);
+  const [student, setStudent] = useState(undefined);
+  const [newScore, setNewScore] = useState(undefined);
+  const [newStudent, setNewStudent] = useState(undefined);
 
-  const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
-  const atmABI = atm_abi.abi;
+  const contractAddress = "0x1680A7e424c27B4a619D9bCf10Ca5B2623Aab2ec";
+  const ABI = abi;
 
   const getWallet = async() => {
     if (window.ethereum) {
@@ -42,69 +45,108 @@ export default function HomePage() {
     handleAccount(accounts);
     
     // once wallet is set we can get a reference to our deployed contract
-    getATMContract();
+    getContract();
   };
 
-  const getATMContract = () => {
+  const getContract = () => {
     const provider = new ethers.providers.Web3Provider(ethWallet);
     const signer = provider.getSigner();
-    const atmContract = new ethers.Contract(contractAddress, atmABI, signer);
+    const theContract = new ethers.Contract(contractAddress,ABI, signer);
  
-    setATM(atmContract);
+    setContract(theContract);
   }
 
-  const getBalance = async() => {
-    if (atm) {
-      setBalance((await atm.getBalance()).toNumber());
+  const getScore = async() => {
+    if (contract) {
+      setScore((await contract.score()).toNumber());
     }
   }
 
-  const deposit = async() => {
-    if (atm) {
-      let tx = await atm.deposit(1);
-      await tx.wait()
-      getBalance();
+  const getStudent = async() => {
+    if (contract) {
+      setStudent((await contract.student()));
     }
   }
 
-  const withdraw = async() => {
-    if (atm) {
-      let tx = await atm.withdraw(1);
+  const setTheScore = async(newScore) => {
+    if (contract) {
+      let tx = await contract.setScore(newScore);
       await tx.wait()
-      getBalance();
+      getScore();
+    }
+  }
+
+  const setTheStudent = async(newStudent) => {
+    try {
+      if (contract) {
+        let tx = await contract.setStudent(newStudent);
+        await tx.wait()
+        getStudent();
+      }
+    } catch (error) {
+      console.log(error);
+      alert(error);
     }
   }
 
   const initUser = () => {
     // Check to see if user has Metamask
     if (!ethWallet) {
-      return <p>Please install Metamask in order to use this ATM.</p>
+      return <p>Please install Metamask in order to use this Contract.</p>
     }
-
     // Check to see if user is connected. If not, connect to their account
     if (!account) {
       return <button onClick={connectAccount}>Please connect your Metamask wallet</button>
     }
 
-    if (balance == undefined) {
-      getBalance();
+    if (score == undefined || student == undefined) {
+      getScore();
+      getStudent();
     }
 
     return (
       <div>
         <p>Your Account: {account}</p>
-        <p>Your Balance: {balance}</p>
-        <button onClick={deposit}>Deposit 1 ETH</button>
-        <button onClick={withdraw}>Withdraw 1 ETH</button>
+        <hr></hr>
+        <h4>Student Recorded: {student}</h4>
+        <p>Your Score: {score}</p>
+        <hr/>
+        <hr/>
+        {scoreForm()}
+        <button onClick={() => (setTheScore(newScore))}>set a new score</button>
+        <hr/>
+        <hr/>
+        {studentForm()}
+        <button onClick={() => (setTheStudent(newStudent))}>register a new student</button>
+
       </div>
     )
   }
 
   useEffect(() => {getWallet();}, []);
 
+  
+  const scoreForm = () => {
+    return (
+      <form>
+        <label> enter new score here </label>
+        <input type="number" value={newScore} onChange={(event) => {setNewScore(event.target.value)}}></input>
+      </form>
+    )
+   }
+
+   const studentForm = () => {
+    return (
+      <form>
+        <label> enter new Student Address here </label>
+        <input type="string" value={newStudent} onChange={(event) => {setNewStudent(event.target.value)}}></input>
+      </form>
+    )
+   }
+
   return (
     <main className="container">
-      <header><h1>Welcome to the Metacrafters ATM!</h1></header>
+      <header><h1>Welcome to the student records Contract!</h1></header>
       {initUser()}
       <style jsx>{`
         .container {
@@ -114,4 +156,5 @@ export default function HomePage() {
       </style>
     </main>
   )
-}
+
+      }
